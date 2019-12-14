@@ -13,6 +13,8 @@ NeoPixelStrip strip(PIXEL_COUNT, PIXEL_PIN_1);
 
 AnimationEngine AE(&game, &strip, 100);
 
+OnlineLogger logger;
+
 
 void setup() {
   Serial.begin(9600);
@@ -71,7 +73,7 @@ void setup() {
 
   //at 8:30AM create Game
   //Alarm.alarmRepeat(8,30,0, AlarmCheckGame);
-
+  logger.init();
 
 }
 
@@ -82,6 +84,7 @@ void loop() {
   
   ArduinoOTA.handle();
   Alarm.delay(10);
+  logger.handle();
    
 }
 

@@ -79,6 +79,7 @@ void testTrig();
 #include "LookupTables.h"
 #include "Draw.h"
 #include "LampTime.h"
+#include "OnlineLogger.h"
 
 #undef _TIME_T_
 #define _TIME_T_ long unsigned int
