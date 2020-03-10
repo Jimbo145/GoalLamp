@@ -6,71 +6,58 @@ void ClearLamp(NeoPixelStrip* ledStrip){
         ledStrip->Show();
 }
 
+RgbColor rgbBrightness(RgbColor currentColor, uint8_t newBrightness){
+    uint8_t red = float(currentColor.R) * (newBrightness / 255.0f);
+    uint8_t green = float(currentColor.G) * (newBrightness / 255.0f);
+    uint8_t blue = float(currentColor.B) * (newBrightness / 255.0f);
+
+    return RgbColor(red, green, blue);
+}
+
 bool lightSpinningLamp(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){
     //Recommended Frame Time of 100ms
     if(frameNum <= extra.uInteger * NUMBER_OF_STRANDS){
-        //for(int col=0; col<NUMBER_OF_STRANDS; col++){
-            int rotationNumber = frameNum / NUMBER_OF_STRANDS;
+        int rotationNumber = frameNum / NUMBER_OF_STRANDS;
 
-            int col = frameNum - (NUMBER_OF_STRANDS * rotationNumber);
-            //ledStrip->ClearTo(RgbColor(0, 0, 0));
-            for(int row=0; row<=PIXEL_PER; row++){
-                //Serial.println(String(row) + " " + String(col) + " " + String(rotationNumber));
-                /*if(col-7>=0){
-                    ledStrip->SetPixelColor(matrix[col-7][row], RgbColor(255, 0, 0));
-                }
-                if(col-6>=0){
-                    ledStrip->SetPixelColor(matrix[col-6][row], RgbColor(255, 0, 0));
-                }
-                if(col-5>=0){
-                    ledStrip->SetPixelColor(matrix[col-5][row], RgbColor(255, 0, 0));
-                }
-                if(col-4>=0){
-                    ledStrip->SetPixelColor(matrix[col-4][row], RgbColor(255, 0, 0));
-                }
-                if(col-3>=0){
-                    ledStrip->SetPixelColor(matrix[col-3][row], RgbColor(255, 0, 0));
-                }
-                if(col-2>=0){
-                    ledStrip->SetPixelColor(matrix[col-2][row], RgbColor(255, 0, 0));
-                }
-                if(col-1>=0){
-                    ledStrip->SetPixelColor(matrix[col-1][row], RgbColor(255, 0, 0));
-                }
-                */
-                
-                if(col-1 > 0){
-                    ledStrip->SetPixelColor(matrix[col-1][row], RgbColor(255, 0, 0));
-                }
-                if(col+1< NUMBER_OF_STRANDS){
-                    ledStrip->SetPixelColor(matrix[col+1][row], RgbColor(255, 0, 0));
-                }
-                ledStrip->SetPixelColor(matrix[col][row], RgbColor(255, 0, 0));
-                ledStrip->SetPixelColor(TOP_PIXEL, RgbColor(255, 0, 0));
+        int col = frameNum - (NUMBER_OF_STRANDS * rotationNumber);
+        for(int row=0; row<=PIXEL_PER; row++){
+            
+            if(col-1 > 0){
+                ledStrip->SetPixelColor(matrix[col-1][row], RgbColor(255, 0, 0));
             }
-            ledStrip->Show();
-            //delay(100);
-        //}
+            if(col+1< NUMBER_OF_STRANDS){
+                ledStrip->SetPixelColor(matrix[col+1][row], RgbColor(255, 0, 0));
+            }
+            ledStrip->SetPixelColor(matrix[col][row], RgbColor(255, 0, 0));
+            ledStrip->SetPixelColor(TOP_PIXEL, RgbColor(255, 0, 0));
+        }
+        //ledStrip->Show();
         return false;
     }
     return true;
 }
 
+/*  lightLamp
+* Description: Fills lamp with color light for set number of frames
+/ Required: AnimationExtra.color 
+                Fill Color
+* Optional: AnimationExtra.minFrameNum
+*               Number of Frames to run this function
+*
+*/
 bool fillWithColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){
-    Serial.println("fill With Color " + String(extra.uInteger));
-    uint16_t framesPerAnimation = extra.uInteger;
-    if(frameNum < framesPerAnimation){
+    if(frameNum < extra.minFrameNum){
         for(int i=0; i<PIXEL_COUNT; i++){
             ledStrip->SetPixelColor(i, extra.color);
         }
-        if(frameNum == framesPerAnimation-1){
+        if(frameNum == extra.minFrameNum-1){
             return true;
         }
     }
     return false;
 }
 
-int lightLine(int vert, int x, int y, int len, RgbColor color, NeoPixelStrip* ledStrip){
+void lightLine(int vert, int x, int y, int len, RgbColor color, NeoPixelStrip* ledStrip){
     for(int i=0; i<len; i++){
         if(vert){
             ledStrip->SetPixelColor(matrix[x][y+i], color);
@@ -78,8 +65,6 @@ int lightLine(int vert, int x, int y, int len, RgbColor color, NeoPixelStrip* le
             ledStrip->SetPixelColor(matrix[x+i][y], color);
         }
      }
-    ledStrip->Show();
-    return 0;
 }
 
 void showNumber(int num, int x, int wrap, RgbColor color, NeoPixelStrip* ledStrip){
@@ -100,7 +85,6 @@ void showNumber(int num, int x, int wrap, RgbColor color, NeoPixelStrip* ledStri
             }
         }
     }
-    ledStrip->Show();
 }
 
 void showLetter(char character, int x, int wrap, RgbColor color, NeoPixelStrip* ledStrip){
@@ -122,16 +106,18 @@ void showLetter(char character, int x, int wrap, RgbColor color, NeoPixelStrip* 
             }
         }
     }
-    ledStrip->Show();
+    //ledStrip->Show();
 }
 
-void print(String strIn, RgbColor color, NeoPixelStrip* ledStrip,Team team, void (*backgroundFunc)(NeoPixelStrip*, RgbColor, uint16_t, bool)){
+/* print
+* Description : Scrolling Print of complete string accross lamp
+*/
+void print(String strIn, RgbColor color, NeoPixelStrip* ledStrip, Team team){
     String str = strIn;
     str.toUpperCase();
-    int index = 7;
-    for(int j=0; j<(6*str.length()); j++){
-        (*backgroundFunc)(ledStrip, RgbColor(0,0,255), 0, false);
-        for(int letters=0; letters<str.length(); letters++){
+    int index = 7; //TODO - change this magic number
+    for(uint j=0; j<(6*str.length()); j++){
+        for(uint letters=0; letters<str.length(); letters++){
             if(index+(4*letters)>=0){
                 if(str[letters]>64 && str[letters]<91){
                     showLetter(str[letters], index+(4*letters),0,color, ledStrip);
@@ -147,40 +133,46 @@ void print(String strIn, RgbColor color, NeoPixelStrip* ledStrip,Team team, void
             }
         }
         index--;
-        delay(300);
-        ClearLamp(ledStrip);
     }
 }
 
-void showScoreNumbers(NhlGame game, NeoPixelStrip* ledStrip){
-    for(int j=(NUMBER_OF_STRANDS+4); j>=-5; j--){
-        ClearLamp(ledStrip);
-        if(j<NUMBER_OF_STRANDS){
-            showNumber(game.home.score, j, 0, RgbColor(NHLCOLORS[game.home.id][0][0],NHLCOLORS[game.home.id][0][1],NHLCOLORS[game.home.id][0][2]), ledStrip);
+//TODO - Test this function --- Can I do this just with the print function instead?
+bool showScoreNumbers(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){
+    
+        if(frameNum<NUMBER_OF_STRANDS){
+            showNumber(game->home.score, frameNum, 0, RgbColor(NHLCOLORS[game->home.id][0][0],NHLCOLORS[game->home.id][0][1],NHLCOLORS[game->home.id][0][2]), ledStrip);
         }
-        if(j>=3 && j<NUMBER_OF_STRANDS+3){
-            showNumber(10, j-4, 0, RgbColor(255,0,0), ledStrip);
+        if(frameNum>=3 && frameNum<NUMBER_OF_STRANDS+3){
+            showNumber(10, frameNum-4, 0, RgbColor(255,0,0), ledStrip);
         }
-        if(j>=5 && j<NUMBER_OF_STRANDS*3){
-            showNumber(game.away.score, j-8, 0, RgbColor(NHLCOLORS[game.away.id][0][0],NHLCOLORS[game.away.id][0][1],NHLCOLORS[game.away.id][0][2]), ledStrip);
+        if(frameNum>=5 && frameNum<NUMBER_OF_STRANDS*3){
+            showNumber(game->away.score, frameNum-8, 0, RgbColor(NHLCOLORS[game->away.id][0][0],NHLCOLORS[game->away.id][0][1],NHLCOLORS[game->away.id][0][2]), ledStrip);
         }
-        delay(800);
-    }
+
+        return true;
 }
 
-void showPixelScore(NhlGame game, NeoPixelStrip* ledStrip){
+/*
+*   Displays scores in alternating columns ie:
+*   
+*        * * * *   
+*        * * * *
+*       ********
+*/
+bool showPixelScore(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){  
     for(int i=0; i<NUMBER_OF_STRANDS; i++){
         if(i%2==0){
-            for(int j=0; j<game.home.score; j++){
-                ledStrip->SetPixelColor(matrix[i][j], RgbColor(NHLCOLORS[game.home.id][0][0],NHLCOLORS[game.home.id][0][1],NHLCOLORS[game.home.id][0][2]));
+            for(int j=0; j<game->home.score; j++){
+                ledStrip->SetPixelColor(matrix[i][j], RgbColor(NHLCOLORS[game->home.id][0][0],NHLCOLORS[game->home.id][0][1],NHLCOLORS[game->home.id][0][2]));
             }
         }else {
-            for(int j=0; j<game.away.score; j++){
-                ledStrip->SetPixelColor(matrix[i][j], RgbColor(NHLCOLORS[game.away.id][0][0],NHLCOLORS[game.away.id][0][1],NHLCOLORS[game.away.id][0][2]));
+            for(int j=0; j<game->away.score; j++){
+                ledStrip->SetPixelColor(matrix[i][j], RgbColor(NHLCOLORS[game->away.id][0][0],NHLCOLORS[game->away.id][0][1],NHLCOLORS[game->away.id][0][2]));
              }
         }
-        ledStrip->Show();
+        //ledStrip->Show();
     }
+    return true;
 }
 
 void animateTeamColor(Team team, uint8_t animations, NeoPixelStrip* ledStrip){
@@ -202,17 +194,36 @@ void animateTeamColor(Team team, uint8_t animations, NeoPixelStrip* ledStrip){
     }
 }
 
-void sideBySideTeamColorBlocking(Team team, NeoPixelStrip* ledStrip){
-    sideBySideTeamColor(team, ledStrip);
-    delay(4000);
-}
+/*  sideBySideTeamColor
+* Description: Fills lamp halves with team primary and secondary colors
+* Requires: AnimationExtra.uInteger
+*               Home = 0
+*               Away = 1
+* Optional: AnimationExtra.minFrameNum
+*               Number of Frames to run this function
+*
+*/
+bool sideBySideTeamColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){
+    //logger.log("sideBySideTeamColor " + String(frameNum));
+    uint8_t id;
 
-void sideBySideTeamColor(Team team, NeoPixelStrip* ledStrip){
+    if(extra.uInteger){
+        id = game->away.id;
+    }else{
+        id = game->home.id;
+    }
+
     for(int i=0; i<NUMBER_OF_STRANDS/2; i++){
-        lightLine(true, i, 0, 8, RgbColor(NHLCOLORS[team.id][0][0],NHLCOLORS[team.id][0][1],NHLCOLORS[team.id][0][2]), ledStrip);
+        lightLine(true, i, 0, 8, RgbColor(NHLCOLORS[id][0][0],NHLCOLORS[id][0][1],NHLCOLORS[id][0][2]), ledStrip);
     }
     for(int i=NUMBER_OF_STRANDS/2; i<NUMBER_OF_STRANDS; i++){
-        lightLine(true, i, 0, 8, RgbColor(NHLCOLORS[team.id][1][0],NHLCOLORS[team.id][1][1],NHLCOLORS[team.id][1][2]), ledStrip);
+        lightLine(true, i, 0, 8, RgbColor(NHLCOLORS[id][1][0],NHLCOLORS[id][1][1],NHLCOLORS[id][1][2]), ledStrip);
+    }
+
+    if(frameNum >= extra.minFrameNum){
+        return true;
+    }else{
+        return false;
     }
 }
 
@@ -220,10 +231,6 @@ void flashColor(RgbColor color, uint8_t numberOfFlashes){
 
 }
 
-bool testAniFunc(NeoPixelStrip* s, uint16_t frameNum, NhlGame* g, AnimationExtra extra){
-    Serial.println("im a function " + String(extra.uInteger));
-    return true;
-}
 
 void gameIntroAnimate(Team team, NeoPixelStrip* ledStrip){
     

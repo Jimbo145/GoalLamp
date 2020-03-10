@@ -38,4 +38,6 @@ class OnlineLogger {
         uint8_t logPos = 0;
 };
 
+
+
 #endif 

@@ -1,7 +1,11 @@
 #ifndef LAMP_TIME_H
 #define LAMP_TIME_H
 
-#include <Lamp.h>
+//#include <Lamp.h>
+#include <Arduino.h>
+#include <TimeLib.h> 
+#include <TimeAlarms.h>
+#include <WiFiUdp.h>
 
 const int timeZone = -4;
 

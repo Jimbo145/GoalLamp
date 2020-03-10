@@ -1,6 +1,4 @@
 #include "Lamp.h"
-#include "Private.h"
-#include <Arduino.h>
 
 
 
@@ -11,25 +9,41 @@ NhlGame game;
 NeoPixelStrip strip(PIXEL_COUNT, PIXEL_PIN_1);
 
 
+OnlineLogger logger;
+
 AnimationEngine AE(&game, &strip, 100);
 
-OnlineLogger logger;
 
 
 void setup() {
   Serial.begin(9600);
   WiFi.begin(ssid, password);
   WiFi.mode(WIFI_STA);
+  WiFi.hostname("GoalLamp");
 
+  //Test Game
+  //game.home.id = 7;
+  //game.home.name = "BUF";
+  //game.home.score = 3;
+  //game.away.id = 6;
+  //game.away.name = "BOS";
+  //game.away.score = 1;
+  //game.detailedState = "Pre-Game";
+
+
+  AnimationExtra extra;
+  extra.uInteger = 1;
+  extra.minFrameNum = 1000;
   
-  Animation ani(lightSpinningLamp, &strip, &game, RgbColor(255,0,0), 10);
-  Animation ani2(fillWithColor, &strip, &game, RgbColor(0,255,0), 1000);
+  //Animation ani(sideBySideTeamColor, &strip, extra, &game);
+  //Animation ani(sideBySideTeamColor, &strip, &game, RgbColor(255,0,0), 10, );
+  //Animation ani2(fillWithColor, &strip, &game, RgbColor(0,255,0), 1000);
   //Animation ani3(fillWithColor, &strip, &game, RgbColor(0,0,255), 100);
-  AE.AddAnimation(ani);
-  
+  //Animation ani(sideBySideTeamColor, &strip, extra, &game);
+  //AE.AddAnimation(ani);
 
-  //AE.AddAnimation(ani2);
-  //AE.AddAnimation(ani3);
+  
+  
 
   AE.StartAnimation();
 
@@ -44,7 +58,6 @@ void setup() {
   while ( WiFi.status() != WL_CONNECTED ) {
     
     delay ( 500 );
-    Serial.println(String(ff) + " ");
     //flash bottom row of pixels when connecting
     if(ff){
       ClearLamp(&strip);
@@ -53,28 +66,49 @@ void setup() {
         lightLine(0, 0, 0, 8, RgbColor(0,0,255), &strip);
         ff = true;
     }
+    strip.Show();
   }
+
+  ClearLamp(&strip);
+  strip.Show();
+
   //turn OTA on
   InitOta();
 
   //Init UDP for NTP
   InitTime();
 
-
-  //create path on startup
-  //AlarmCheckGame();  
-  //BuildNHLPath();
-
-  //Alarm.timerOnce(10, AlarmGameUpdate);
-
-  //print("ATL", RgbColor(0,225,0), &strip,game.home, lightLamp);
-
-  //Serial.println(String(Id));
-
-  //at 8:30AM create Game
-  //Alarm.alarmRepeat(8,30,0, AlarmCheckGame);
   logger.init();
 
+
+ 
+  //BuildNHLPath();
+
+   
+
+  //at 8:30AM create Game
+  Alarm.alarmRepeat(8,30,0, AlarmCheckGame);
+  
+  //create path on startup
+  AlarmCheckGame();
+
+  /*
+  game.home.id = 7;
+  game.home.name = "BUF";
+  game.home.score = 3;
+  game.away.id = 53;
+  game.away.name = "BOS";
+  game.away.score = 1;
+  game.detailedState = "Pre-Game";
+  */
+
+ /*
+  AnimationExtra ext1;
+  ext1.uInteger = 0;
+  ext1.minFrameNum = 100;
+  Animation aniShowPix1(sideBySideTeamColor, &strip, ext1, &game);
+  AE.AddAnimation(aniShowPix1);
+  */
 }
 
 
@@ -94,24 +128,44 @@ void AlarmCheckGame(){
 }
 
 void AlarmGameUpdate(){
+  AnimationExtra extShowPix;
+  AnimationExtra extLightSpinning;
+  extLightSpinning.uInteger = 7;
+  Animation aniShowPix(showPixelScore, &strip, extShowPix, &game);
+  Animation aniLightSpinning(lightSpinningLamp, &strip, extLightSpinning, &game);
 
+  AnimationExtra extLight;
+  extLight.minFrameNum = 7;
+  extLight.color = RgbColor(255,0,0);
+  Animation aniLight(fillWithColor, &strip, extLight, &game);
+
+  
+  logger.log("game Update");
   switch(CheckNHLScore()) {
     case 0: 
       //no Score update
-      showPixelScore(game, &strip);
+      
+      AE.AddAnimation(aniShowPix);
+      //showPixelScore(game, &strip);
       break;
     case 1: 
       //Home Score Update
-      //lightSpinningLamp(5, &strip);
-      showScoreNumbers(game, &strip);
+      if(game.home.id == 7){
+        AE.AddAnimation(aniLight);
+      }else{
+        AE.AddAnimation(aniLightSpinning);
+      }
       break;
     case 2: 
       //Away Score Update
-      //lightLamp( &strip);
-      showScoreNumbers(game, &strip);
+      if(game.home.id == 7){
+        AE.AddAnimation(aniLight);
+      }else{
+        AE.AddAnimation(aniLightSpinning);
+      }
       break;
   }
-  Serial.println(game.toString());
+  logger.log(game.toString());
 
   //Scheduled
   //Pre-Game
@@ -128,11 +182,12 @@ void AlarmGameUpdate(){
 
 //builds nhlPath
 void BuildNHLPath(){
-    Serial.print("GET /api/v1/schedule?startDate=");
-    Serial.print(String(month()) + "/" + String(day()) + "/" + String(year()));
-    Serial.print("&endDate=");
-    Serial.print(String(month()) + "/" + String(day()) + "/" + String(year()));
-    Serial.println("&site=en_nhl&teamId=7 HTTP/1.1");
+  
+    logger.log("GET /api/v1/schedule?startDate=" \
+    + String(month()) + "/" + String(day()) + "/" + String(year()) \
+    + "&endDate=" \
+    + String(month()) + "/" + String(day()) + "/" + String(year()) \
+    + "&site=en_nhl&teamId=7 HTTP/1.1");
 
     WiFiClient client;
 
@@ -169,8 +224,10 @@ void BuildNHLPath(){
          */
 
           client.findUntil("\"gamePk\" :", "\0"); 
+          
 
           gamePk = client.readStringUntil(',').toInt();
+          logger.log(String(gamePk));
   
           client.findUntil("\"season\" : \"", "\0"); 
 
@@ -189,16 +246,19 @@ void BuildNHLPath(){
           client.findUntil("\"id\" :", "\0"); 
           game.home.id = client.readStringUntil(',').toInt();
 
-          Serial.println("GameTime- " + String(game.time));
           break;
         }
       }
 
       if(gamePk && season){
        sprintf(game.path,"/GameData/%i/%i/gc/gcsb.jsonp", season ,gamePk);
+       
+       if(game.detailedState.equals("In Progress") || game.detailedState.equals("In Progress - Critical") ||game.detailedState.equals("Final")){
+        AlarmGameUpdate();
+       }
        //Serial.println(game.path);
       }else{
-       Serial.println("ERROR Unable To Build Path");
+       logger.log("ERROR Unable To Build Path", ERROR);
       }
       client.stop();
     }
@@ -222,8 +282,7 @@ int CheckNHLScore(){
     int newHomeScore = 0;
     int scoreUpdateStatus = 0;
 
-    Serial.print("GET live.nhle.com");
-    Serial.println(game.path);
+    logger.log("GET live.nhle.com " + String(game.path));
  
     if (client.connect("live.nhle.com", 80))
     {
@@ -280,7 +339,7 @@ int CheckNHLScore(){
         game.away.score = newAwayScore;
         scoreUpdateStatus = 2;
     }
-    Serial.println("score Update Status " + String(scoreUpdateStatus));
+    logger.log("score Update Status " + String(scoreUpdateStatus));
     return scoreUpdateStatus;
 }
 

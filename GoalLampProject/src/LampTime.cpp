@@ -83,7 +83,7 @@ time_t getNtpTime(){
     }
   }
   Serial.println("No NTP Response :-(");
-  ESP.restart();
+  //ESP.restart();
   return 0; // return 0 if unable to get the time
 }
 // send an NTP request to the time server at the given address
