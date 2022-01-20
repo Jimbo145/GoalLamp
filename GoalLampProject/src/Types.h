@@ -9,7 +9,7 @@ class Team {
     String name;
     int score;
     String toString(){
-      return "TeamName- " + name + " Score " + String(score) + " id:" + id;
+      return " TeamName- " + name + " Score " + String(score) + " id:" + id;
     }
 };
 
@@ -20,6 +20,7 @@ class NhlGame {
     String detailedState;
     Team home;
     Team away;
+    bool gameToday;
     String toString(){
       return "\n GameState- " \
       + detailedState + "\r\n HomeTeam- " + home.toString() + "\r\n AwayTeam- " + away.toString();

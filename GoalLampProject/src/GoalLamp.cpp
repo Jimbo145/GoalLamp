@@ -13,6 +13,8 @@ OnlineLogger logger;
 
 AnimationEngine AE(&game, &strip, 100);
 
+bool waitingForTime = false;
+
 
 
 void setup() {
@@ -20,6 +22,10 @@ void setup() {
   WiFi.begin(ssid, password);
   WiFi.mode(WIFI_STA);
   WiFi.hostname("GoalLamp");
+
+ 
+  //turn OTA on
+  
 
   //Test Game
   //game.home.id = 7;
@@ -42,7 +48,6 @@ void setup() {
   //Animation ani(sideBySideTeamColor, &strip, extra, &game);
   //AE.AddAnimation(ani);
 
-  
   
 
   AE.StartAnimation();
@@ -72,13 +77,16 @@ void setup() {
   ClearLamp(&strip);
   strip.Show();
 
-  //turn OTA on
-  InitOta();
+  //internet connected... lets go
+  logger.init(); 
+  InitOta(); 
+
 
   //Init UDP for NTP
-  InitTime();
+  if (!InitTime()){
+    logger.log("InitTime Failed");
+  }
 
-  logger.init();
 
 
  
@@ -92,23 +100,6 @@ void setup() {
   //create path on startup
   AlarmCheckGame();
 
-  /*
-  game.home.id = 7;
-  game.home.name = "BUF";
-  game.home.score = 3;
-  game.away.id = 53;
-  game.away.name = "BOS";
-  game.away.score = 1;
-  game.detailedState = "Pre-Game";
-  */
-
- /*
-  AnimationExtra ext1;
-  ext1.uInteger = 0;
-  ext1.minFrameNum = 100;
-  Animation aniShowPix1(sideBySideTeamColor, &strip, ext1, &game);
-  AE.AddAnimation(aniShowPix1);
-  */
 }
 
 
@@ -123,49 +114,81 @@ void loop() {
 }
 
 void AlarmCheckGame(){
-  BuildNHLPath();
-  Alarm.alarmOnce(game.time - 600, AlarmGameUpdate);
+  if(timeStatus() == timeNotSet || timeStatus() == timeNeedsSync){
+    logger.log("Waiting for time server");
+    Serial.println("waiting for time server");
+    Alarm.timerOnce(10, AlarmCheckGame);
+  } else{
+    BuildNHLPath();
+    Serial.print(String(game.gameToday));
+    Serial.println(" we made it out of the buld path");
+    if(game.gameToday){
+      Alarm.alarmOnce(game.time - 600, AlarmGameUpdate);
+    }
+  };
+  
 }
 
 void AlarmGameUpdate(){
+  
+  //Show Pixel Score
   AnimationExtra extShowPix;
-  AnimationExtra extLightSpinning;
-  extLightSpinning.uInteger = 7;
   Animation aniShowPix(showPixelScore, &strip, extShowPix, &game);
+
+  //Light The Lamp for the Good Guys
+  AnimationExtra extLightSpinning;
+  extLightSpinning.uInteger = 20;
   Animation aniLightSpinning(lightSpinningLamp, &strip, extLightSpinning, &game);
 
+  //Light the Lamp for the Bad Guys
   AnimationExtra extLight;
-  extLight.minFrameNum = 7;
+  extLight.minFrameNum = 20;
   extLight.color = RgbColor(255,0,0);
   Animation aniLight(fillWithColor, &strip, extLight, &game);
 
+  //Clear Fill
+  //AnimationExtra extClearLight;
+  //extClearLight.minFrameNum = 20;
+  //extClearLight.color = RgbColor(0,0,0);
+  //Animation aniLightClear(fillWithColor, &strip, extClearLight, &game);
+
+  AnimationExtra extTeamColor;
+  extTeamColor.minFrameNum = 10;
+  Animation aniTeamColor(evenOddTeamColor, &strip, extLight, &game);
+
   
-  logger.log("game Update");
+  //logger.log("game Update");
   switch(CheckNHLScore()) {
     case 0: 
       //no Score update
       
       AE.AddAnimation(aniShowPix);
-      //showPixelScore(game, &strip);
+      
       break;
-    case 1: 
+    case 1:       
       //Home Score Update
+      extTeamColor.uInteger = 0;
       if(game.home.id == 7){
         AE.AddAnimation(aniLight);
       }else{
         AE.AddAnimation(aniLightSpinning);
       }
+      AE.AddAnimation(aniTeamColor);
+      AE.AddAnimation(aniShowPix);
       break;
     case 2: 
       //Away Score Update
+      extTeamColor.uInteger = 1;
       if(game.home.id == 7){
         AE.AddAnimation(aniLight);
       }else{
         AE.AddAnimation(aniLightSpinning);
       }
+      AE.AddAnimation(aniTeamColor);
+      AE.AddAnimation(aniShowPix);
       break;
   }
-  logger.log(game.toString());
+  //logger.log(game.toString());
 
   //Scheduled
   //Pre-Game
@@ -174,7 +197,8 @@ void AlarmGameUpdate(){
   {
     Alarm.timerOnce(10, AlarmGameUpdate);
   }else{
-    ClearLamp(&strip);
+    //AE.AddAnimation(aniLightClear);
+    //ClearLamp(&strip);
   }
 }
 
@@ -183,13 +207,17 @@ void AlarmGameUpdate(){
 //builds nhlPath
 void BuildNHLPath(){
   
-    logger.log("GET /api/v1/schedule?startDate=" \
+    /*logger.log("BUILDNHLPATH GET /api/v1/schedule?startDate=" \
     + String(month()) + "/" + String(day()) + "/" + String(year()) \
     + "&endDate=" \
     + String(month()) + "/" + String(day()) + "/" + String(year()) \
     + "&site=en_nhl&teamId=7 HTTP/1.1");
+    */
+
+    
 
     WiFiClient client;
+    int numberOfGamesToday = -1;
 
     int gamePk = 0;
     int season = 0;
@@ -223,11 +251,21 @@ void BuildNHLPath(){
            gameStatus = atoi(root["dates"][0]["games"][0]["status"]["codedGameState"]);
          */
 
+          client.findUntil("\"totalGames\" : ", "\0");
+          numberOfGamesToday = client.readStringUntil(',').toInt();
+          if(numberOfGamesToday == 0){
+            game.gameToday = false;
+            break;
+          }else{
+            game.gameToday = true;
+          }
+
+          Serial.println(String(numberOfGamesToday));
+
           client.findUntil("\"gamePk\" :", "\0"); 
           
 
           gamePk = client.readStringUntil(',').toInt();
-          logger.log(String(gamePk));
   
           client.findUntil("\"season\" : \"", "\0"); 
 
@@ -251,13 +289,18 @@ void BuildNHLPath(){
       }
 
       if(gamePk && season){
-       sprintf(game.path,"/GameData/%i/%i/gc/gcsb.jsonp", season ,gamePk);
-       
-       if(game.detailedState.equals("In Progress") || game.detailedState.equals("In Progress - Critical") ||game.detailedState.equals("Final")){
+        Serial.println("try to generate game pagth");
+        sprintf(game.path,"/GameData/%i/%i/gc/gcsb.jsonp", season ,gamePk);
+
+        if(game.detailedState.equals("In Progress") || game.detailedState.equals("In Progress - Critical") ||game.detailedState.equals("Final")){
         AlarmGameUpdate();
-       }
-       //Serial.println(game.path);
+        }
+        client.stop();
+      }else if(!game.gameToday){
+        
+       logger.log("No Games Today");
       }else{
+          
        logger.log("ERROR Unable To Build Path", ERROR);
       }
       client.stop();

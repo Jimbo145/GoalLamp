@@ -4,10 +4,10 @@ WiFiUDP ntpUDP;
 time_t t;
 byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
-void InitTime(){
-  ntpUDP.begin(1337);
+int InitTime(){
+  int status = ntpUDP.begin(1337);
   setSyncProvider(getNtpTime); 
-  
+  return status;
 }
 
 time_t TimeStringToTime(String ts, int MinutesOffset){

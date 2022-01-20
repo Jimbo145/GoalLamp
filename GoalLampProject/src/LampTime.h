@@ -11,7 +11,7 @@ const int timeZone = -4;
 
 const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
 
-void InitTime();
+int InitTime();
 void sendNTPpacket();
 time_t getNtpTime();
 String addPreceding0(int digits);

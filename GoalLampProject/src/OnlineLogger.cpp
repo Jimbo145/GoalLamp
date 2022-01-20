@@ -93,5 +93,7 @@ void OnlineLogger::log(String LogMessage, LogLevel level){
   logbook[logPos].LogMessage = LogMessage;
   logbook[logPos].time = now();
 
+  Serial.println(LogMessage);
+
   logPos++;
 }

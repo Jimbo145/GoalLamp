@@ -43,6 +43,7 @@ void printFunc(String strIn, RgbColor color, NeoPixelStrip* ledStrip, Team team,
 bool fillWithColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
 bool lightSpinningLamp(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
 bool showPixelScore(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
+bool evenOddTeamColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
 bool sideBySideTeamColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
 bool showScoreNumbers(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra);
 

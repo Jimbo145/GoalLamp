@@ -175,22 +175,40 @@ bool showPixelScore(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, A
     return true;
 }
 
-void animateTeamColor(Team team, uint8_t animations, NeoPixelStrip* ledStrip){
-    bool frame = false;
-    ClearLamp(ledStrip);
-    for(int j=0; j<animations; j++){
-        frame = !frame;
+/*  evenOddTeamColor
+* Description: Fills every other column with team primary and secondary colors
+* Requires: AnimationExtra.uInteger
+*               Home = 0
+*               Away = 1
+* Optional: AnimationExtra.minFrameNum
+*               Number of Frames to run this function
+*
+*/
+bool evenOddTeamColor(NeoPixelStrip* ledStrip, uint16_t frameNum, NhlGame* game, AnimationExtra extra){
+         int teamId;
+         bool frame = 0; // TODO Make this changable (animation Extra update)
+
+         NhlGame g = *game;
+        if (extra.uInteger){
+            teamId = g.home.id;
+        }else{
+            teamId = g.away.id;
+        }
+        
+
         for(int i=0; i<PIXEL_PER; i++){
             if(i%2){
-                lightLine(false, 0, i, 8, RgbColor(NHLCOLORS[team.id][frame][0],NHLCOLORS[team.id][frame][1],NHLCOLORS[team.id][frame][2]), ledStrip);
+                lightLine(false, 0, i, 8, RgbColor(NHLCOLORS[teamId][frame][0],NHLCOLORS[teamId][frame][1],NHLCOLORS[teamId][frame][2]), ledStrip);
             }else{
-                lightLine(false, 0, i, 8, RgbColor(NHLCOLORS[team.id][!frame][0],NHLCOLORS[team.id][!frame][1],NHLCOLORS[team.id][!frame][2]), ledStrip);
+                lightLine(false, 0, i, 8, RgbColor(NHLCOLORS[teamId][!frame][0],NHLCOLORS[teamId][!frame][1],NHLCOLORS[teamId][!frame][2]), ledStrip);
             }
         }
         
-        delay(800);
-        ClearLamp(ledStrip);
-
+        
+    if(frameNum >= extra.minFrameNum){
+        return true;
+    }else{
+        return false;
     }
 }
 
